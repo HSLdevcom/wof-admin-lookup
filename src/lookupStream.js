@@ -159,10 +159,7 @@ function createLookupStream(resolver, config) {
       if ( result.postalcode ) {
         var postalcode = result.postalcode[0].name;
         if (postalcode && postalcode !== '') {
-          var zip = doc.getAddress('zip');
-          if (!zip || zip === '') {
-            doc.setAddress('zip', postalcode);
-          }
+          doc.setAddress('zip', postalcode);
         }
       }
 
