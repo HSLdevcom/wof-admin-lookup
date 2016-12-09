@@ -58,7 +58,7 @@ RemotePIPResolver.prototype.lookup = function lookup(centroid, callback) {
         obj[elem.Placetype] = [];
       }
 
-      var parent = {
+      const parent = {
         id: elem.Id,
         name: elem.Name
       };

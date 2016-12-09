@@ -47,7 +47,7 @@ LocalPIPService.prototype.lookup = function lookup(centroid, callback, search_la
         obj[elem.Placetype] = [];
       }
 
-      var parent = {
+      const parent = {
         id: elem.Id,
         name: elem.Name
       };
