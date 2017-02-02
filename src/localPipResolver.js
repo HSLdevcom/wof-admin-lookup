@@ -9,13 +9,14 @@ var createPIPService = require('pelias-wof-pip-service').create;
  * @param {object} [lookupService] optional, primarily used for testing
  * @constructor
  */
-function LocalPIPService(lookupService, layers) {
+
+function LocalPIPService(lookupService, datapath, layers) {
 
   this.lookupService = lookupService || null;
 
   if (!this.lookupService) {
     var self = this;
-    createPIPService(layers, function (err, service) {
+    createPIPService(datapath, layers, function (err, service) {
       self.lookupService = service;
     });
   }
@@ -78,10 +79,12 @@ LocalPIPService.prototype.end = function end() {
  * Factory function
  *
  * @param {object} [service]
+ * @param {array} [layers]
+ * @param {string} [datapath]
  * @returns {LocalPIPService}
  */
-function createLocalPipResolver(service, layers) {
-  return new LocalPIPService(service, layers);
-}
-
-module.exports = createLocalPipResolver;
+module.exports = function(datapath) {
+  return function(service, layers) {
+    return new LocalPIPService(service, datapath, layers);
+  };
+};
