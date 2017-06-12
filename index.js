@@ -1,13 +1,25 @@
-const peliasConfig = require('pelias-config').generate();
-require('./src/configValidation').validate(peliasConfig);
+const peliasConfig = require('pelias-config').generate(require('./schema'));
 
-const _ = require('lodash');
-
-const maxConcurrentReqs = _.get(peliasConfig, 'imports.adminLookup.maxConcurrentReqs', 1);
-const datapath = peliasConfig.imports.whosonfirst.datapath;
+const through = require('through2');
 
 module.exports = {
-  createLookupStream: require('./src/lookupStream')(maxConcurrentReqs),
-  createWofPipResolver: require('./src/httpPipResolver')(maxConcurrentReqs),
-  createLocalWofPipResolver: require('./src/localPipResolver')(datapath)
+  create: () => {
+    if (peliasConfig.imports.adminLookup.enabled) {
+      const datapath = peliasConfig.imports.whosonfirst.datapath;
+      const resolver = require('./src/localPipResolver')(datapath);
+
+      return require('./src/lookupStream')(resolver,
+        peliasConfig.imports.adminLookup.maxConcurrentReqs);
+
+    } else {
+      return through.obj();
+    }
+
+  },
+  resolver: (datapath) => {
+    const resolver = require('./src/localPipResolver')(
+      datapath || peliasConfig.imports.whosonfirst.datapath);
+    return resolver;
+  }
+
 };
