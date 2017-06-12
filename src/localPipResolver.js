@@ -2,6 +2,7 @@
 
 const logger = require('pelias-logger').get('wof-admin-lookup');
 const createPipService = require('./pip/index').create;
+const peliasConfig = require( 'pelias-config' ).generate();
 
 /**
  * LocalPIPService class
@@ -12,9 +13,13 @@ const createPipService = require('./pip/index').create;
 function LocalPipService(datapath) {
   const self = this;
 
-  createPipService(datapath, [], false, (err, service) => {
-     self.pipService = service;
-  });
+  createPipService(
+    datapath,
+    peliasConfig.imports.defaultAdminLayers || [],
+    peliasConfig.imports.adminLookup.localizedNames || false,
+    (err, service) => {
+      self.pipService = service;
+    });
 }
 
 /**

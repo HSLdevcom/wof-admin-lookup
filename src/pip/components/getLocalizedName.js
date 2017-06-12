@@ -2,6 +2,8 @@
 
 const _ = require('lodash');
 const logger = require('pelias-logger').get('wof-pip-service');
+const peliasConfig = require( 'pelias-config' ).generate();
+const wofLabels = peliasConfig.imports.wofPipNames || {};
 
 /**
  * Return the localized name or default name for the given record
@@ -18,7 +20,8 @@ function getName(wofData) {
   }
 
   // attempt to use the following in order of priority and fallback to wof:name if all else fails
-  return getLocalizedName(wofData, 'wof:lang_x_spoken') ||
+  return getConfiguredName(wofData) ||
+         getLocalizedName(wofData, 'wof:lang_x_spoken') ||
          getLocalizedName(wofData, 'wof:lang_x_official') ||
          getLocalizedName(wofData, 'wof:lang') ||
          getPropertyValue(wofData, 'wof:label') ||
@@ -96,6 +99,30 @@ function getLocalizedName(wofData, langProperty) {
     // if corresponding name property wasn't found, log the error
     logger.warn(langProperty, '[missing]', official_lang_key, wofData.properties['wof:name'],
       wofData.properties['wof:placetype'], wofData.properties['wof:id']);
+  }
+  return false;
+}
+
+function getConfiguredName(wofData) {
+  // use configured name if such one is defined
+
+  var type = wofData.properties['wof:placetype'];
+  var labels = wofLabels[type];
+  if (labels) {
+    var nameArray = [];
+    for (var i=0; i<labels.length; i++) {
+      var name = wofData.properties[labels[i]];
+      if (Array.isArray(name)) {
+        for (var j=0; j<name.length; j++) {
+          nameArray.push(name[j]);
+        }
+      } else {
+        nameArray.push(name);
+      }
+    }
+    if (nameArray.length) {
+      return nameArray;
+    }
   }
   return false;
 }
