@@ -60,9 +60,15 @@ function createPipResolverStream(pipResolver) {
           const values = result[placetype];
 
           try {
+            var name = values[0].name;
             // addParent can throw an error if, for example, name is an empty string
-            doc.addParent(placetype, values[0].name, values[0].id.toString(), values[0].abbr);
-
+            if (Array.isArray(name)) { // can now be an array
+              for(var i=0; i<name.length; i++) {
+                doc.addParent(placetype, name[i], values[0].id.toString(), values[0].abbr);
+              }
+            } else {
+              doc.addParent(placetype, name, values[0].id.toString(), values[0].abbr);
+            }
           }
           catch (err) {
             logger.info('invalid value', {
@@ -76,6 +82,13 @@ function createPipResolverStream(pipResolver) {
 
         }
       );
+
+      if ( result.postalcode ) { // want zip as adddress part
+        var postalcode = result.postalcode[0].name;
+        if (postalcode && postalcode !== '') {
+          doc.setAddress('zip', postalcode);
+        }
+      }
 
       callback(null, doc);
 
