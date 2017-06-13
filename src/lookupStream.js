@@ -1,13 +1,12 @@
 'use strict';
 
-var _ = require('lodash');
-var parallelStream = require('pelias-parallel-stream');
-var regions = require('../data/regions');
-var peliasLogger = require( 'pelias-logger' );
-var getAdminLayers = require( './getAdminLayers' );
+const _ = require('lodash');
+const parallelStream = require('pelias-parallel-stream');
+const peliasLogger = require( 'pelias-logger' );
+const getAdminLayers = require( './getAdminLayers' );
 
 //defaults to nowhere
-var optsArg = {
+const optsArg = {
   transports: []
 };
 //only prints to suspect records log if flag is set
@@ -16,75 +15,22 @@ optsArg.transports.push(new peliasLogger.winston.transports.File( {
   timestamp: false
 }));
 
-var logger = peliasLogger.get( 'wof-admin-lookup', optsArg );
-
-regions.isSupported = function(country, name) {
-  return this.hasOwnProperty(country) && this[country].hasOwnProperty(name);
-};
-
-regions.getCode = function(countries, regions) {
-  if (_.isEmpty(countries) || _.isEmpty(regions)) {
-    return undefined;
-  }
-
-  var country = countries[0].name;
-  var region = regions[0].name;
-
-  if (this.isSupported(country, region)) {
-    return this[country][region];
-  }
-
-  return undefined;
-
-};
-
-function setFields(values, doc, wofFieldName, abbreviation) {
-  try {
-    if (!_.isEmpty(values)) {
-      var name = values[0].name;
-      if (Array.isArray(name)) { // can now be an array
-        for(var i=0; i<name.length; i++) {
-          doc.addParent(wofFieldName, name[i], values[0].id.toString(), abbreviation);
-        }
-      } else {
-        doc.addParent(wofFieldName, values[0].name, values[0].id.toString(), abbreviation);
-      }
-    }
-  }
-  catch (err) {
-    logger.info('invalid value', {
-      centroid: doc.getCentroid(),
-      result: {
-        type: wofFieldName,
-        values: values,
-        abbreviation: abbreviation
-      }
-    });
-  }
-}
-
-function hasCountry(result) {
-  return _.isEmpty(result.country);
-}
+const logger = peliasLogger.get( 'wof-admin-lookup', optsArg );
 
 function hasAnyMultiples(result) {
-  return Object.keys(result).some(function(element) {
+  return Object.keys(result).some((element) => {
     return result[element].length > 1;
   });
 }
 
-function createLookupStream(resolver, maxConcurrentReqs) {
-  if (!resolver) {
-    throw new Error('createLookupStream requires a valid resolver to be passed in as the first parameter');
-  }
-
-  var stream = parallelStream(maxConcurrentReqs, function (doc, enc, callback) {
+function createPipResolverStream(pipResolver) {
+  return function (doc, enc, callback) {
     // don't do anything if there's no centroid
     if (_.isEmpty(doc.getCentroid())) {
       return callback(null, doc);
     }
 
-    resolver.lookup(doc.getCentroid(), function (err, result) {
+    pipResolver.lookup(doc.getCentroid(), getAdminLayers(doc.getLayer()), (err, result) => {
 
       // assume errors at this point are fatal, so pass them upstream to kill stream
       if (err) {
@@ -93,7 +39,7 @@ function createLookupStream(resolver, maxConcurrentReqs) {
       }
 
       // log results w/o country OR any multiples
-      if (hasCountry(result)) {
+      if (_.isEmpty(result.country)) {
         logger.info('no country', {
           centroid: doc.getCentroid(),
           result: result
@@ -106,33 +52,38 @@ function createLookupStream(resolver, maxConcurrentReqs) {
         });
       }
 
-      var regionCode = regions.getCode(result.country, result.region);
-      var countryCode = getCountryCode(result);
+      doc.getParentFields()
+        // filter out placetypes for which there are no values
+        .filter((placetype) => { return !_.isEmpty(result[placetype]); } )
+        // assign parents into the doc
+        .forEach((placetype) => {
+          const values = result[placetype];
 
-      // set code if available
-      if (!_.isEmpty(countryCode)) {
-        doc.setAlpha3(countryCode);
-      }
-      else {
-        // TBD: remove this after debugging is done!!!
-        logger.error('no country code', result);
-      }
+          try {
+            var name = values[0].name;
+            // addParent can throw an error if, for example, name is an empty string
+            if (Array.isArray(name)) { // can now be an array
+              for(var i=0; i<name.length; i++) {
+                doc.addParent(placetype, name[i], values[0].id.toString(), values[0].abbr);
+              }
+            } else {
+              doc.addParent(placetype, name, values[0].id.toString(), values[0].abbr);
+            }
+          }
+          catch (err) {
+            logger.info('invalid value', {
+              centroid: doc.getCentroid(),
+              result: {
+                type: placetype,
+                values: values
+              }
+            });
+          }
 
-      setFields(result.country, doc, 'country', countryCode);
-      setFields(result.macroregion, doc, 'macroregion');
-      if (!_.isEmpty(result.region)) { // if there are regions, use them
-        setFields(result.region, doc, 'region', regionCode);
-      } else { // go with dependency for region (eg - Puerto Rico is a dependency)
-        setFields(result.dependency, doc, 'region');
-      }
-      setFields(result.macrocounty, doc, 'macrocounty');
-      setFields(result.county, doc, 'county');
-      setFields(result.locality, doc, 'locality');
-      setFields(result.localadmin, doc, 'localadmin');
-      setFields(result.borough, doc, 'borough');
-      setFields(result.neighbourhood, doc, 'neighbourhood');
+        }
+      );
 
-      if ( result.postalcode ) {
+      if ( result.postalcode ) { // want zip as adddress part
         var postalcode = result.postalcode[0].name;
         if (postalcode && postalcode !== '') {
           doc.setAddress('zip', postalcode);
@@ -140,26 +91,27 @@ function createLookupStream(resolver, maxConcurrentReqs) {
       }
 
       callback(null, doc);
-    }, getAdminLayers(doc.getLayer()));
-  },
-  function end() {
-    if (typeof resolver.end === 'function') {
-      resolver.end();
-    }
-  });
 
-  return stream;
-}
-
-function getCountryCode(result) {
-  if (result.country && result.country.length > 0 && result.country[0].hasOwnProperty('abbr')) {
-    return result.country[0].abbr;
-  }
-  return undefined;
-}
-
-module.exports = function(maxConcurrentReqs) {
-  return function(resolver) {
-    return createLookupStream(resolver, maxConcurrentReqs || 1);
+    });
   };
+}
+
+function createPipResolverEnd(pipResolver) {
+  return () => {
+    if (typeof pipResolver.end === 'function') {
+      pipResolver.end();
+    }
+  };
+}
+
+module.exports = function(pipResolver, maxConcurrentReqs) {
+  if (!pipResolver) {
+    throw new Error('valid pipResolver required to be passed in as the first parameter');
+  }
+
+  const pipResolverStream = createPipResolverStream(pipResolver);
+  const end = createPipResolverEnd(pipResolver);
+
+  return parallelStream(maxConcurrentReqs || 1, pipResolverStream, end);
+
 };

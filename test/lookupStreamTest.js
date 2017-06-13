@@ -1,97 +1,107 @@
-var tape = require('tape');
-var event_stream = require('event-stream');
-var Document = require('pelias-model').Document;
-var _ = require('lodash');
+const tape = require('tape');
+const event_stream = require('event-stream');
+const Document = require('pelias-model').Document;
+const _ = require('lodash');
 
-var stream = require('../src/lookupStream')();
+const stream = require('../src/lookupStream');
 
 function test_stream(input, testedStream, callback) {
-    var input_stream = event_stream.readArray(input);
-    var destination_stream = event_stream.writeArray(callback);
+    const input_stream = event_stream.readArray(input);
+    const destination_stream = event_stream.writeArray(callback);
 
     input_stream.pipe(testedStream).pipe(destination_stream);
 }
 
-tape('tests', function(test) {
-  test.test('doc without centroid should not modify input', function(t) {
+tape('tests', (test) => {
+  test.test('doc without centroid should not modify input', (t) => {
     const input = [
       new Document( 'whosonfirst', 'placetype', '1')
     ];
 
     const resolver = {
-      lookup: () => {
+      lookup: (centroid, search_layers, callback) => {
         throw new Error('lookup should not have been called');
       }
     };
 
     const lookupStream = stream(resolver);
 
-    test_stream(input, lookupStream, function(err, actual) {
+    test_stream(input, lookupStream, (err, actual) => {
       t.deepEqual(actual, input, 'nothing should have changed');
       t.end();
     });
 
   });
 
-  test.test('country, macroregion, region, macrocounty, ' +
-    'county, locality, localadmin, borough, and neighborhood ' +
-    'fields should be set into document', function(t) {
-    var input = [
-      new Document( 'whosonfirst', 'placetype', '1').setCentroid({ lat: 12.121212, lon: 21.212121 })
-    ];
-
-    var expected = [
+  test.test('country, dependency, macroregion, region, macrocounty, county, locality, ' +
+    'localadmin, borough, macrohood, and neighborhood fields should be set into document', (t) => {
+    const input = [
       new Document( 'whosonfirst', 'placetype', '1')
         .setCentroid({ lat: 12.121212, lon: 21.212121 })
-        .addParent('country', 'Country 1', '1')
-        .addParent('macroregion', 'Macroregion 1', '3')
-        .addParent('region', 'Region 1', '5')
-        .addParent('macrocounty', 'Macrocounty 1', '7')
-        .addParent('county', 'County 1', '9')
-        .addParent('locality', 'Locality 1', '11')
-        .addParent('localadmin', 'LocalAdmin 1', '13')
-        .addParent('borough', 'Borough 1', '15')
-        .addParent('neighbourhood', 'Neighbourhood 1', '17')
     ];
 
-    var resolver = {
-      lookup: function (centroid, callback) {
-        var result = {
+    const expected = [
+      new Document( 'whosonfirst', 'placetype', '1')
+        .setCentroid({ lat: 12.121212, lon: 21.212121 })
+        .addParent('country', 'Country 1', '1', 'XYZ')
+        .addParent('dependency', 'Dependency 1', '3', 'Dependency 1 Abbr')
+        .addParent('macroregion', 'Macroregion 1', '5', 'Macroregion 1 Abbr')
+        .addParent('region', 'Region 1', '7', 'Region 1 Abbr')
+        .addParent('macrocounty', 'Macrocounty 1', '9', 'Macrocounty 1 Abbr')
+        .addParent('county', 'County 1', '11', 'County 1 Abbr')
+        .addParent('locality', 'Locality 1', '13', 'Locality 1 Abbr')
+        .addParent('localadmin', 'LocalAdmin 1', '15', 'LocalAdmin 1 Abbr')
+        .addParent('borough', 'Borough 1', '17', 'Borough 1 Abbr')
+        .addParent('macrohood', 'Macrohood 1', '19', 'Macrohood 1 Abbr')
+        .addParent('neighbourhood', 'Neighbourhood 1', '21', 'Neighbourhood 1 Abbr')
+    ];
+
+    const resolver = {
+      lookup: (centroid, search_layers, callback) => {
+        const result = {
           country: [
-            {id: 1, name: 'Country 1'},
+            {id: 1, name: 'Country 1', abbr: 'XYZ'},
             {id: 2, name: 'Country 2'}
           ],
+          dependency: [
+            {id: 3, name: 'Dependency 1', abbr: 'Dependency 1 Abbr'},
+            {id: 4, name: 'Dependency 2', abbr: 'Dependency 2 Abbr'}
+          ],
           macroregion: [
-            {id: 3, name: 'Macroregion 1'},
-            {id: 4, name: 'Macroregion 2'}
+            {id: 5, name: 'Macroregion 1', abbr: 'Macroregion 1 Abbr'},
+            {id: 6, name: 'Macroregion 2', abbr: 'Macroregion 2 Abbr'}
           ],
           region: [
-            {id: 5, name: 'Region 1'},
-            {id: 6, name: 'Region 2'}
+            {id: 7, name: 'Region 1', abbr: 'Region 1 Abbr'},
+            {id: 8, name: 'Region 2', abbr: 'Region 2 Abbr'}
           ],
           macrocounty: [
-            {id: 7, name: 'Macrocounty 1'},
-            {id: 8, name: 'Macrocounty 2'}
+            {id: 9, name: 'Macrocounty 1', abbr: 'Macrocounty 1 Abbr'},
+            {id: 10, name: 'Macrocounty 2', abbr: 'Macrocounty 2 Abbr'}
           ],
           county: [
-            {id: 9, name: 'County 1'},
-            {id: 10, name: 'County 2'}
+            {id: 11, name: 'County 1', abbr: 'County 1 Abbr'},
+            {id: 12, name: 'County 2', abbr: 'County 2 Abbr'}
           ],
           locality: [
-            {id: 11, name: 'Locality 1'},
-            {id: 12, name: 'Locality 2'}
+            {id: 13, name: 'Locality 1', abbr: 'Locality 1 Abbr'},
+            {id: 14, name: 'Locality 2', abbr: 'Locality 2 Abbr'}
           ],
           localadmin: [
-            {id: 13, name: 'LocalAdmin 1'},
-            {id: 14, name: 'LocalAdmin 2'}
+            {id: 15, name: 'LocalAdmin 1', abbr: 'LocalAdmin 1 Abbr'},
+            {id: 16, name: 'LocalAdmin 2', abbr: 'LocalAdmin 2 Abbr'}
           ],
           borough: [
-            {id: 15, name: 'Borough 1'},
-            {id: 16, name: 'Borough 2'},
+            {id: 17, name: 'Borough 1', abbr: 'Borough 1 Abbr'},
+            {id: 18, name: 'Borough 2', abbr: 'Borough 2 Abbr'},
+          ],
+          macrohood: [
+            {id: 19, name: 'Macrohood 1', abbr: 'Macrohood 1 Abbr'},
+            {id: 20, name: 'Macrohood 2', abbr: 'Macrohood 2 Abbr'}
           ],
           neighbourhood: [
-            {id: 17, name: 'Neighbourhood 1'},
-            {id: 18, name: 'Neighbourhood 2'}
+            {id: 21, name: 'Neighbourhood 1', abbr: 'Neighbourhood 1 Abbr'},
+            {id: 22, name: 'Neighbourhood 2', abbr: 'Neighbourhood 2 Abbr'}
           ]
         };
 
@@ -99,24 +109,24 @@ tape('tests', function(test) {
       }
     };
 
-    var lookupStream = stream(resolver);
+    const lookupStream = stream(resolver);
 
-    test_stream(input, lookupStream, function(err, actual) {
+    test_stream(input, lookupStream, (err, actual) => {
       t.deepEqual(actual, expected, 'all fields should have been set');
       t.end();
     });
 
   });
 
-  test.test('resolver with field-less result should only set fields that are present', function(t) {
-    var input = [
+  test.test('resolver with field-less result should only set fields that are present', (t) => {
+    const input = [
       new Document( 'whosonfirst', 'placetype', '1')
         .setCentroid({ lat: 12.121212, lon: 21.212121 }),
       new Document( 'whosonfirst', 'placetype', '1')
         .setCentroid({ lat: 13.131313, lon: 31.313131 })
     ];
 
-    var expected = [
+    const expected = [
       new Document( 'whosonfirst', 'placetype', '1')
         .setCentroid({ lat: 12.121212, lon: 21.212121 })
         .addParent('region', 'Region', '1'),
@@ -125,8 +135,8 @@ tape('tests', function(test) {
         .addParent('country', 'Country', '2')
     ];
 
-    var resolver = {
-      lookup: function (centroid, callback) {
+    const resolver = {
+      lookup: (centroid, search_layers, callback) => {
         if (_.isEqual(centroid, {lat: 12.121212, lon: 21.212121})) {
           setTimeout(callback, 0, null, {region: [{id: 1, name: 'Region'}]});
         } else if (_.isEqual(centroid, {lat: 13.131313, lon: 31.313131})) {
@@ -135,37 +145,41 @@ tape('tests', function(test) {
       }
     };
 
-    var lookupStream = stream(resolver);
+    const lookupStream = stream(resolver);
 
-    test_stream(input, lookupStream, function(err, actual) {
+    test_stream(input, lookupStream, (err, actual) => {
       t.deepEqual(actual, expected, 'result with missing fields should not set anything in doc');
       t.end();
     });
 
   });
 
-  test.test('resolver throwing error should push doc onto stream unmodified', function(t) {
-    var input = new Document( 'whosonfirst', 'placetype', '1')
-        .setCentroid({ lat: 12.121212, lon: 21.212121 });
+  test.test('resolver throwing error should push doc onto stream unmodified', (t) => {
+    const input = [
+      new Document( 'whosonfirst', 'placetype', '1')
+        .setCentroid({ lat: 12.121212, lon: 21.212121 })
+    ];
 
-    var expected = new Document( 'whosonfirst', 'placetype', '1')
-        .setCentroid({ lat: 12.121212, lon: 21.212121 });
+    const expected = [
+      new Document( 'whosonfirst', 'placetype', '1')
+        .setCentroid({ lat: 12.121212, lon: 21.212121 })
+    ];
 
-    var resolver = {
-      lookup: function (centroid, callback) {
+    const resolver = {
+      lookup: (centroid, search_layers, callback) => {
         setTimeout(callback, 0, 'this is an error', {region: 'Region'});
       }
     };
 
-    var lookupStream = stream(resolver);
+    const lookupStream = stream(resolver);
 
-    var input_stream = event_stream.readArray([input]);
-    var destination_stream = event_stream.writeArray(function() {
+    const input_stream = event_stream.readArray(input);
+    const destination_stream = event_stream.writeArray(() => {
       t.fail('this stream should not have been called');
       t.end();
     });
 
-    input_stream.pipe(lookupStream).on('error', function(e) {
+    input_stream.pipe(lookupStream).on('error', (e) => {
       t.equal(e.message, 'PIP server failed: "this is an error"');
       t.deepEqual(input, expected, 'the document should not have been modified');
       t.end();
@@ -173,189 +187,19 @@ tape('tests', function(test) {
 
   });
 
-  test.test('abbreviation supporting country and region should set region abbreviation', function(t) {
-    var input = [
-      new Document( 'whosonfirst', 'placetype', '1').setCentroid({ lat: 12.121212, lon: 21.212121 })
-    ];
-
-    var expected = [
-      new Document( 'whosonfirst', 'placetype', '1')
-        .setCentroid({ lat: 12.121212, lon: 21.212121 })
-        .setAlpha3('USA')
-        .addParent('country', 'United States', '1', 'USA')
-        .addParent('region', 'Pennsylvania', '3', 'PA')
-    ];
-
-    var resolver = {
-      lookup: function(centroid, callback) {
-        var result = {
-          country: [
-            {id: 1, name: 'United States', abbr: 'USA'}
-          ],
-          region: [
-            {id: 3, name: 'Pennsylvania'}
-          ]
-        };
-
-        setTimeout(callback, 0, null, result);
-      }
-    };
-
-    var lookupStream = stream(resolver);
-
-    test_stream(input, lookupStream, function(err, actual) {
-      t.deepEqual(actual, expected, 'region abbreviation should have been set');
-      t.end();
-    });
-
-  });
-
-  test.test('supported country and unsupported region should not set region abbreviation', function(t) {
-    var input = [
-      new Document( 'whosonfirst', 'placetype', '1').setCentroid({ lat: 12.121212, lon: 21.212121 })
-    ];
-
-    var expected = [
-      new Document( 'whosonfirst', 'placetype', '1')
-        .setCentroid({ lat: 12.121212, lon: 21.212121 })
-        .setAlpha3('USA')
-        .addParent('country', 'United States', '1', 'USA')
-        .addParent('region', 'unknown US state', '3')
-    ];
-
-    var resolver = {
-      lookup: function(centroid, callback) {
-        var result = {
-          country: [
-            {id: 1, name: 'United States', abbr: 'USA'}
-          ],
-          region: [
-            {id: 3, name: 'unknown US state'}
-          ]
-        };
-
-        setTimeout(callback, 0, null, result);
-      }
-    };
-
-    var lookupStream = stream(resolver);
-
-    test_stream(input, lookupStream, function(err, actual) {
-      t.deepEqual(actual, expected, 'no region abbreviation should have been set');
-      t.end();
-    });
-
-  });
-
-  test.test('unsupported country and supported region should not set region abbreviation', function(t) {
-    var input = [
-      new Document( 'whosonfirst', 'placetype', '1').setCentroid({ lat: 12.121212, lon: 21.212121 })
-    ];
-
-    var expected = [
-      new Document( 'whosonfirst', 'placetype', '1')
-        .setCentroid({ lat: 12.121212, lon: 21.212121 })
-        .addParent('country', 'unsupported country', '1')
-        .addParent('region', 'Pennsylvania', '3')
-    ];
-
-    var resolver = {
-      lookup: function (centroid, callback) {
-        var result = {
-          country: [
-            {id: 1, name: 'unsupported country'}
-          ],
-          region: [
-            {id: 3, name: 'Pennsylvania'}
-          ]
-        };
-
-        setTimeout(callback, 0, null, result);
-      }
-    };
-
-    var lookupStream = stream(resolver);
-
-    test_stream(input, lookupStream, function(err, actual) {
-      t.deepEqual(actual, expected, 'no region abbreviation should have been set');
-      t.end();
-    });
-
-  });
-
-  test.test('no countries or regions should not set region abbreviation', function(t) {
-    var inputDoc = new Document( 'whosonfirst', 'placetype', '1')
-        .setCentroid({ lat: 12.121212, lon: 21.212121 });
-
-    var expectedDoc = new Document( 'whosonfirst', 'placetype', '1')
-        .setCentroid({ lat: 12.121212, lon: 21.212121 })
-        .addParent( 'locality', 'Locality', '1');
-
-    var resolver = {
-      lookup: function(centroid, callback) {
-        var result = {
-          locality: [
-            {id: 1, name: 'Locality'}
-          ]
-        };
-
-        setTimeout(callback, 0, null, result);
-      }
-    };
-
-    var lookupStream = stream(resolver);
-
-    test_stream([inputDoc], lookupStream, function(err, actual) {
-      t.deepEqual(actual, [expectedDoc], 'no region abbreviation should have been set');
-      t.end();
-    });
-
-  });
-
-  test.test('supported country should have alpha3 set', function(t) {
-    var inputDoc = new Document( 'whosonfirst', 'placetype', '1')
-        .setCentroid({ lat: 12.121212, lon: 21.212121 });
-
-    var expectedDoc = new Document( 'whosonfirst', 'placetype', '1')
-        .setAlpha3('DNK')
-        .setCentroid({ lat: 12.121212, lon: 21.212121 })
-        .addParent( 'country', 'Denmark', '1', 'DNK');
-
-    var resolver = {
-      lookup: function(centroid, callback) {
-        var result = {
-          country: [
-            {id: 1, name: 'Denmark', abbr: 'DNK'}
-          ]
-        };
-
-        setTimeout(callback, 0, null, result);
-      }
-    };
-
-    var lookupStream = stream(resolver);
-
-    test_stream([inputDoc], lookupStream, function(err, actual) {
-      t.deepEqual(actual, [expectedDoc], 'alpha3 should have been set');
-      t.end();
-    });
-
-  });
-
-  test.test('empty string in place name should not error', function(t) {
-    var inputDoc = new Document( 'whosonfirst', 'placetype', '1')
+  test.test('empty string in place name should not error', (t) => {
+    const inputDoc = new Document( 'whosonfirst', 'placetype', '1')
       .setCentroid({ lat: 12.121212, lon: 21.212121 });
 
-    var expectedDoc = new Document( 'whosonfirst', 'placetype', '1')
-      .setAlpha3('DNK')
+    const expectedDoc = new Document( 'whosonfirst', 'placetype', '1')
       .setCentroid({ lat: 12.121212, lon: 21.212121 })
-      .addParent( 'country', 'Denmark', '1', 'DNK');
+      .addParent( 'country', 'Country 1', '1', 'XYZ');
 
-    var resolver = {
-      lookup: function(centroid, callback) {
-        var result = {
+    const resolver = {
+      lookup: (centroid, search_layers, callback) => {
+        const result = {
           country: [
-            {id: 1, name: 'Denmark', abbr: 'DNK'}
+            {id: 1, name: 'Country 1', abbr: 'XYZ'}
           ],
           county: [
             {id: 2, name: ''}
@@ -366,11 +210,10 @@ tape('tests', function(test) {
       }
     };
 
-    var lookupStream = stream(resolver);
+    const lookupStream = stream(resolver);
 
-    t.doesNotThrow( function () {
-
-      test_stream([inputDoc], lookupStream, function (err, actual) {
+    t.doesNotThrow(() => {
+      test_stream([inputDoc], lookupStream, (err, actual) => {
         t.deepEqual(actual, [expectedDoc], 'county should not be set');
         t.end();
       });
@@ -378,80 +221,8 @@ tape('tests', function(test) {
 
   });
 
-  test.test('first dependency should be used as region when there are no regions', function(t) {
-    var input = [
-      new Document( 'whosonfirst', 'placetype', '1').setCentroid({ lat: 12.121212, lon: 21.212121 })
-    ];
-
-    var expected = [
-      new Document( 'whosonfirst', 'placetype', '1')
-        .setCentroid({ lat: 12.121212, lon: 21.212121 })
-        .addParent('region', 'Dependency 1', '11')
-    ];
-
-    var resolver = {
-      lookup: function(centroid, callback) {
-        var result = {
-          dependency: [
-            {id: 11, name: 'Dependency 1'},
-            {id: 12, name: 'Dependency 2'}
-          ]
-        };
-
-        setTimeout(callback, 0, null, result);
-      }
-    };
-
-    var lookupStream = stream(resolver);
-
-    test_stream(input, lookupStream, function(err, actual) {
-      t.deepEqual(actual, expected, 'all fields should have been set');
-      t.end();
-    });
-
-  });
-
-  test.test('region should be set to first region when regions and dependencies are both available', function(t) {
-    var input = [
-      new Document( 'whosonfirst', 'placetype', '1').setCentroid({ lat: 12.121212, lon: 21.212121 })
-    ];
-
-    var expected = [
-      new Document( 'whosonfirst', 'placetype', '1')
-        .setCentroid({ lat: 12.121212, lon: 21.212121 })
-        .addParent('region', 'Region 1', '11')
-    ];
-
-    var resolver = {
-      lookup: function(centroid, callback) {
-        var result = {
-          region: [
-            {id: 11, name: 'Region 1'},
-            {id: 12, name: 'Region 2'}
-          ],
-          dependency: [
-            {id: 13, name: 'Dependency 1'},
-            {id: 14, name: 'Dependency 2'}
-          ]
-        };
-
-        setTimeout(callback, 0, null, result);
-      }
-    };
-
-    var lookupStream = stream(resolver);
-
-    test_stream(input, lookupStream, function(err, actual) {
-      t.deepEqual(actual, expected, 'all fields should have been set');
-      t.end();
-    });
-
-  });
-
-  test.test('call end to stop child processes', function (t) {
-    t.plan(2);
-
-    var resolver = {
+  test.test('call end to stop child processes', (t) => {
+    const resolver = {
       end: function () {
         t.assert(true, 'called end function');
         t.equals(resolver, this, 'this is set to the correct object');
@@ -459,8 +230,7 @@ tape('tests', function(test) {
       }
     };
 
-    var lookupStream = stream(resolver);
-    lookupStream.end();
+    stream(resolver).end();
 
   });
 
