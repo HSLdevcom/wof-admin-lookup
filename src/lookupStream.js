@@ -4,6 +4,9 @@ const _ = require('lodash');
 const parallelStream = require('pelias-parallel-stream');
 const peliasLogger = require( 'pelias-logger' );
 const getAdminLayers = require( './getAdminLayers' );
+const peliasConfig = require( 'pelias-config' ).generate();
+
+const dropUnmapped = peliasConfig.imports && peliasConfig.imports.adminLookup && peliasConfig.imports.adminLookup.dropUnmapped;
 
 //defaults to nowhere
 const optsArg = {
@@ -27,15 +30,31 @@ function createPipResolverStream(pipResolver) {
   return function (doc, enc, callback) {
     // don't do anything if there's no centroid
     if (_.isEmpty(doc.getCentroid())) {
+      if (dropUnmapped) { // don't pass doc forward
+        return callback();
+      }
       return callback(null, doc);
     }
 
     pipResolver.lookup(doc.getCentroid(), getAdminLayers(doc.getLayer()), (err, result) => {
-
-      // assume errors at this point are fatal, so pass them upstream to kill stream
       if (err) {
-        logger.error(err);
-        return callback(new Error('PIP server failed: ' + (err.message || JSON.stringify(err))));
+        // if there's an error, just log it and move on
+        logger.error(`PIP server failed: ${(err.message || JSON.stringify(err))}`, {
+          id: doc.getGid(),
+          lat: doc.getCentroid().lat,
+          lon: doc.getCentroid().lon
+        });
+        // don't pass the unmodified doc along
+        return callback();
+      }
+
+      if (dropUnmapped && _.isEmpty(result)) {
+        logger.info('zero admins', {
+          centroid: doc.getCentroid(),
+          doc: doc
+        });
+        // skip docs which have no admin hierachy
+        return callback();
       }
 
       // log results w/o country OR any multiples
@@ -45,6 +64,7 @@ function createPipResolverStream(pipResolver) {
           result: result
         });
       }
+
       if (hasAnyMultiples(result)) {
         logger.info('multiple values', {
           centroid: doc.getCentroid(),

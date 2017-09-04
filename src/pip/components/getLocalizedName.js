@@ -116,7 +116,7 @@ function getConfiguredName(wofData) {
         for (var j=0; j<name.length; j++) {
           nameArray.push(name[j]);
         }
-      } else {
+      } else if(name) {
         nameArray.push(name);
       }
     }
