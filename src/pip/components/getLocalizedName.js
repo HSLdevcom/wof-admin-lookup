@@ -108,22 +108,26 @@ function getConfiguredName(wofData) {
 
   var type = wofData.properties['wof:placetype'];
   var labels = wofLabels[type];
-  if (labels) {
-    var nameArray = [];
-    for (var i=0; i<labels.length; i++) {
-      var name = wofData.properties[labels[i]];
-      if (Array.isArray(name)) {
-        for (var j=0; j<name.length; j++) {
+  if (!labels) {
+    return false;
+  }
+  var nameArray = [];
+  for (var i=0; i<labels.length; i++) {
+    var name = wofData.properties[labels[i]];
+    if (Array.isArray(name)) {
+      for (var j=0; j<name.length; j++) {
+        if (name[j]) {
           nameArray.push(name[j]);
         }
-      } else if(name) {
-        nameArray.push(name);
       }
-    }
-    if (nameArray.length) {
-      return nameArray;
+    } else if(name) {
+      nameArray.push(name);
     }
   }
+  if (nameArray.length) {
+    return nameArray;
+  }
+
   return false;
 }
 
