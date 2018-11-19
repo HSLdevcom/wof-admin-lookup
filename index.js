@@ -1,25 +1,33 @@
-const peliasConfig = require('pelias-config').generate(require('./schema'));
+'use strict';
 
+const peliasConfig = require('pelias-config').generate(require('./schema'));
+const _ = require('lodash');
 const through = require('through2');
 
-module.exports = {
-  create: () => {
-    if (peliasConfig.imports.adminLookup.enabled) {
-      const datapath = peliasConfig.imports.whosonfirst.datapath;
-      const resolver = require('./src/localPipResolver')(datapath);
-
-      return require('./src/lookupStream')(resolver,
-        peliasConfig.imports.adminLookup.maxConcurrentReqs);
-
-    } else {
-      return through.obj();
-    }
-
-  },
-  resolver: (datapath) => {
-    const resolver = require('./src/localPipResolver')(
-      datapath || peliasConfig.imports.whosonfirst.datapath);
-    return resolver;
+function create(layers) {
+  if (peliasConfig.imports.adminLookup.enabled) {
+    return require('./src/lookupStream')(resolver(layers),
+      peliasConfig.imports.adminLookup);
+  } else {
+    return through.obj();
   }
+}
 
+function resolver(layers) {
+  if (_.has(peliasConfig, 'imports.services.pip')) {
+    return require('./src/remotePipResolver')(peliasConfig.imports.services.pip, layers);
+  } else {
+    return localResolver(layers);
+  }
+}
+
+function localResolver(layers) {
+  const datapath = peliasConfig.imports.whosonfirst.datapath;
+  return require('./src/localPipResolver')(datapath, layers);
+}
+
+module.exports = {
+  create: create,
+  resolver: resolver,
+  localResolver: localResolver
 };

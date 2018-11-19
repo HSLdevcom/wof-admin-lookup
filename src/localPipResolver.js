@@ -10,14 +10,17 @@ const peliasConfig = require( 'pelias-config' ).generate();
  * @param {object} [pipService] optional, primarily used for testing
  * @constructor
  */
-function LocalPipService(datapath) {
+function LocalPipService(datapath, layers) {
   const self = this;
 
   createPipService(
     datapath,
-    peliasConfig.imports.defaultAdminLayers || [],
+    layers || peliasConfig.imports.defaultAdminLayers || [],
     peliasConfig.imports.adminLookup.localizedNames || false,
     (err, service) => {
+      if (err) {
+        throw err;
+      }
       self.pipService = service;
     });
 }
@@ -85,6 +88,6 @@ LocalPipService.prototype.end = function end() {
  * @param {string} [datapath]
  * @returns {LocalPIPService}
  */
-module.exports = (datapath) => {
-  return new LocalPipService(datapath);
+module.exports = (datapath, layers) => {
+  return new LocalPipService(datapath, layers);
 };

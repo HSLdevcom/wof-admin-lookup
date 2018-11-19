@@ -1,24 +1,12 @@
 'use strict';
 
 const _ = require('lodash');
-const parallelStream = require('pelias-parallel-stream');
-const peliasLogger = require( 'pelias-logger' );
+const parallelTransform = require('parallel-transform');
+const logger = require( 'pelias-logger' ).get( 'wof-admin-lookup' );
 const getAdminLayers = require( './getAdminLayers' );
 const peliasConfig = require( 'pelias-config' ).generate();
-
 const dropUnmapped = peliasConfig.imports && peliasConfig.imports.adminLookup && peliasConfig.imports.adminLookup.dropUnmapped;
-
-//defaults to nowhere
-const optsArg = {
-  transports: []
-};
-//only prints to suspect records log if flag is set
-optsArg.transports.push(new peliasLogger.winston.transports.File( {
-  filename: 'suspect_wof_records.log',
-  timestamp: false
-}));
-
-const logger = peliasLogger.get( 'wof-admin-lookup', optsArg );
+const usePostalCity = require( './usePostalCity' );
 
 function hasAnyMultiples(result) {
   return Object.keys(result).some((element) => {
@@ -26,8 +14,8 @@ function hasAnyMultiples(result) {
   });
 }
 
-function createPipResolverStream(pipResolver) {
-  return function (doc, enc, callback) {
+function createPipResolverStream(pipResolver, config) {
+  return function (doc, callback) {
     // don't do anything if there's no centroid
     if (_.isEmpty(doc.getCentroid())) {
       if (dropUnmapped) { // don't pass doc forward
@@ -59,14 +47,14 @@ function createPipResolverStream(pipResolver) {
 
       // log results w/o country OR any multiples
       if (_.isEmpty(result.country)) {
-        logger.info('no country', {
+        logger.debug('no country', {
           centroid: doc.getCentroid(),
           result: result
         });
       }
 
       if (hasAnyMultiples(result)) {
-        logger.info('multiple values', {
+        logger.debug('multiple values', {
           centroid: doc.getCentroid(),
           result: result
         });
@@ -110,6 +98,12 @@ function createPipResolverStream(pipResolver) {
         }
       }
 
+      // prefer a 'postal city' locality when a valid postal code is available
+      // optionally enable/disable this functionality using config variable.
+      if( config && true === config.usePostalCities ){
+        usePostalCity( result, doc );
+      }
+
       callback(null, doc);
 
     });
@@ -124,14 +118,19 @@ function createPipResolverEnd(pipResolver) {
   };
 }
 
-module.exports = function(pipResolver, maxConcurrentReqs) {
+module.exports = function(pipResolver, config) {
   if (!pipResolver) {
     throw new Error('valid pipResolver required to be passed in as the first parameter');
   }
 
-  const pipResolverStream = createPipResolverStream(pipResolver);
+  // pelias 'imports.adminLookup' config section
+  config = config || {};
+
+  const pipResolverStream = createPipResolverStream(pipResolver, config);
   const end = createPipResolverEnd(pipResolver);
 
-  return parallelStream(maxConcurrentReqs || 1, pipResolverStream, end);
+  const stream = parallelTransform(config.maxConcurrentReqs || 1, pipResolverStream);
+  stream.on('end', end);
 
+  return stream;
 };

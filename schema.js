@@ -6,10 +6,17 @@ module.exports = Joi.object().keys({
     adminLookup: Joi.object().keys({
       // default maxConcurrentReqs to # of cpus/cores * 10
       maxConcurrentReqs: Joi.number().integer().default(cpus().length*10),
-      enabled: Joi.boolean().default(true)
+      enabled: Joi.boolean().default(true),
+      missingMetafilesAreFatal: Joi.boolean().default(false),
+      usePostalCities: Joi.boolean().default(false)
     }).unknown(true),
     whosonfirst: Joi.object().keys({
       datapath: Joi.string()
-    }).requiredKeys('datapath').unknown(true)
-  }).requiredKeys('whosonfirst').unknown(true)
+    }).requiredKeys('datapath').unknown(true),
+    services: Joi.object().keys({
+      pip: Joi.object().keys({
+        url: Joi.string()
+      }).requiredKeys('url').unknown(true)
+    }).unknown(true)
+  }).or('whosonfirst', 'services.pip').unknown(true)
 }).requiredKeys('imports').unknown(true);

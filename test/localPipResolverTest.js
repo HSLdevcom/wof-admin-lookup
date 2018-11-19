@@ -114,4 +114,35 @@ tape('tests', (test) => {
 
   });
 
+  test.test('layers should be passed when supplied', (t) => {
+    t.plan(3);
+
+    const resolver = proxyquire('../src/localPipResolver', {
+      './pip/index': {
+        create: (datapath, layers, localizedAdminNames, callback) => {
+          t.equals(datapath, 'this is the datapath');
+          t.deepEqual(layers, ['layer 1', 'layer 2']);
+          t.equals(localizedAdminNames, false);
+          t.end();
+
+        }
+      }
+    })('this is the datapath', ['layer 1', 'layer 2']);
+
+  });
+
+  test.test('createPipService returning error should throw exception', t => {
+    const resolver = proxyquire('../src/localPipResolver', {
+      './pip/index': {
+        create: (datapath, layers, localizedAdminNames, callback) => {
+          callback('this is a localPipResolver error');
+        }
+      }
+    });
+
+    t.throws(resolver.bind('this is the datapath', ['layer 1', 'layer 2']), /this is a localPipResolver error/);
+    t.end();
+
+  });
+
 });
