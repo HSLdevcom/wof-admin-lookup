@@ -45,9 +45,11 @@ LocalPipService.prototype.lookup = function lookup(centroid, search_layers, call
 
     // convert the array to an object keyed on the array element's Placetype field
     const result = results.reduce((obj, elem) => {
-      if (!obj.hasOwnProperty(elem.Placetype)) {
-        obj[elem.Placetype] = [];
+
+      if (obj.hasOwnProperty(elem.Placetype)) {
+        return obj;
       }
+      obj[elem.Placetype] = [];
 
       const parent = {
         id: elem.Id,

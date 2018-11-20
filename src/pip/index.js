@@ -23,7 +23,6 @@ const responseQueue = {};
 const wofData = {};
 
 const defaultLayers = [
-  'postalcode',
   'neighbourhood',
   'borough',
   'locality',
@@ -37,7 +36,8 @@ const defaultLayers = [
   'empire',
   'continent',
   'marinearea',
-  'ocean'
+  'ocean',
+  'postalcode'
 ];
 
 module.exports.create = function createPIPService(datapath, layers, localizedAdminNames, callback) {
@@ -111,9 +111,9 @@ module.exports.create = function createPIPService(datapath, layers, localizedAdm
             latLon: {latitude: latitude, longitude: longitude},
             // copy of layers to search
             search_layers: search_layers.slice(),
-            responseCallback: responseCallback
+            responseCallback: responseCallback,
+            admins: [],
           };
-
           // start the chain of worker calls
           searchWorker(id);
 
@@ -194,7 +194,7 @@ function handleResults(msg) {
       searchWorker(msg.id);
     } else {
       // no layers left to search, so return an empty array
-      responseQueue[msg.id].responseCallback(null, []);
+      responseQueue[msg.id].responseCallback(null, responseQueue[msg.id].admins);
 
       delete responseQueue[msg.id];
     }
@@ -202,10 +202,22 @@ function handleResults(msg) {
   } else {
     // there was a hit, so find the hierachy and assemble all the pieces
     const results = _.compact(msg.results.Hierarchy[0].map(id => wofData[id]));
+    const remainingLayers = responseQueue[msg.id].search_layers;
 
-    responseQueue[msg.id].responseCallback(null, results);
+    results.forEach(result => {
+      const index = remainingLayers.indexOf(result.Placetype);
+      if (index !== -1) {
+        remainingLayers.splice(index, 1);
+      }
+      responseQueue[msg.id].admins.push(result);
+    });
 
-    delete responseQueue[msg.id];
+    if (!_.isEmpty(remainingLayers)) {
+      searchWorker(msg.id);
+    } else {
+      responseQueue[msg.id].responseCallback(null, responseQueue[msg.id].admins);
+      delete responseQueue[msg.id];
+    }
   }
 
 }
