@@ -23,6 +23,7 @@ const responseQueue = {};
 const wofData = {};
 
 const defaultLayers = [
+  'postalcode',
   'neighbourhood',
   'borough',
   'locality',
