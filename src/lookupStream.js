@@ -46,11 +46,8 @@ function createPipResolverStream(pipResolver, config) {
       }
 
       // log results w/o country OR any multiples
-      if (_.isEmpty(result.country)) {
-        logger.debug('no country', {
-          centroid: doc.getCentroid(),
-          result: result
-        });
+      if (_.isEmpty(result.country) && peliasConfig.imports && peliasConfig.imports.defaultCountry) {
+        doc.addParent('country', peliasConfig.imports.defaultCountry.name, '0', peliasConfig.imports.defaultCountry.abbr);
       }
 
       if (hasAnyMultiples(result)) {
