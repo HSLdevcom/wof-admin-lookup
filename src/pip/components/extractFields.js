@@ -62,7 +62,7 @@ module.exports.create = function(enableLocalizedNames) {
  * @returns {boolean|string}
  */
 function getName(wofData, enableLocalizedNames) {
-  if (enableLocalizedNames) {
+  if (enableLocalizedNames === 'true') {
     return getLocalizedName(wofData);
   }
   return getDefaultName(wofData);
