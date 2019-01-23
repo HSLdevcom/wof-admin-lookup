@@ -24,7 +24,6 @@ module.exports.create = function(enableLocalizedNames) {
         Id: wofData.properties['wof:id'],
         Name: getName(wofData, enableLocalizedNames),
         Placetype: wofData.properties['wof:placetype'],
-        Hierarchy: wofData.properties['wof:hierarchy'],
         Centroid: {
           lat: wofData.properties['geom:latitude'],
           lon: wofData.properties['geom:longitude']
@@ -34,9 +33,19 @@ module.exports.create = function(enableLocalizedNames) {
       geometry: wofData.geometry
     };
 
+    if (!_.isEmpty(wofData.properties['wof:hierarchy'])) {
+      // if there's a wof:hierarchy, condense down to just the ids
+      res.properties.Hierarchy = _.map(wofData.properties['wof:hierarchy'], hierarchy => _.values(hierarchy));
+    } else {
+      // otherwise, synthesize a hierarchy from the records' id
+      res.properties.Hierarchy = [ [ res.properties.Id ] ];
+    }
+
     // use different abbreviation field for country
     if (res.properties.Placetype === 'country') {
       res.properties.Abbrev = wofData.properties['wof:country_alpha3'];
+    } else if(wofData.properties['wof:shortcode']) {
+      res.properties.Abbrev = wofData.properties['wof:shortcode'];
     } else {
       res.properties.Abbrev = wofData.properties['wof:abbreviation'];
     }
@@ -53,7 +62,7 @@ module.exports.create = function(enableLocalizedNames) {
  * @returns {boolean|string}
  */
 function getName(wofData, enableLocalizedNames) {
-  if (enableLocalizedNames === true) {
+  if (enableLocalizedNames === 'true') {
     return getLocalizedName(wofData);
   }
   return getDefaultName(wofData);

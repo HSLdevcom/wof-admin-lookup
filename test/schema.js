@@ -29,7 +29,7 @@ tape('test configuration scenarios', (test) =>  {
 
   });
 
-  test.test('missing imports.whosonfirst should throw error', (t) =>  {
+  test.test('if imports.whosonfirst is missing services.pip should be required', (t) =>  {
     const config = {
       imports: {}
     };
@@ -37,7 +37,7 @@ tape('test configuration scenarios', (test) =>  {
     const result = Joi.validate(config, schema);
 
     t.equals(result.error.details.length, 1);
-    t.equals(result.error.details[0].message, '"whosonfirst" is required');
+    t.equals(result.error.details[0].message, '"value" must contain at least one of [whosonfirst, services.pip]');
     t.end();
 
   });
@@ -226,6 +226,75 @@ tape('test configuration scenarios', (test) =>  {
 
   });
 
+  test.test('non-boolean imports.adminLookup.missingMetafilesAreFatal should throw error', (t) =>  {
+    [null, 'string', {}, [], 17].forEach((value) => {
+      const config = {
+        imports: {
+          adminLookup: {
+            maxConcurrentReqs: 17,
+            missingMetafilesAreFatal: value
+          },
+          whosonfirst: {
+            datapath: 'datapath value'
+          }
+        }
+      };
+
+      const result = Joi.validate(config, schema);
+
+      t.equals(result.error.details.length, 1);
+      t.equals(result.error.details[0].message, '"missingMetafilesAreFatal" must be a boolean');
+
+    });
+
+    t.end();
+
+  });
+
+  test.test('boolean imports.adminLookup.missingMetafilesAreFatal should not throw error', (t) =>  {
+    [true, false].forEach((value) => {
+      const config = {
+        imports: {
+          adminLookup: {
+            maxConcurrentReqs: 17,
+            missingMetafilesAreFatal: value
+          },
+          whosonfirst: {
+            datapath: 'datapath value'
+          }
+        }
+      };
+
+      const result = Joi.validate(config, schema);
+
+      t.notOk(result.error);
+
+    });
+
+    t.end();
+
+  });
+
+  test.test('missing imports.adminLookup.missingMetafilesAreFatal should default to false', (t) =>  {
+    const config = {
+      imports: {
+        adminLookup: {
+          maxConcurrentReqs: 17
+        },
+        whosonfirst: {
+          datapath: 'datapath value'
+        }
+      }
+    };
+
+    const result = Joi.validate(config, schema);
+
+    t.notOk(result.error);
+    t.equals(result.value.imports.adminLookup.missingMetafilesAreFatal, false);
+    t.end();
+
+  });
+
   test.test('integer imports.adminLookup.maxConcurrentReqs should not throw error', (t) =>  {
     const config = {
       imports: {
@@ -284,6 +353,56 @@ tape('test configuration scenarios', (test) =>  {
     const result = Joi.validate(config, schema);
 
     t.notOk(result.error);
+    t.end();
+
+  });
+
+  test.test('missing imports.services.pip should throw error', (t) =>  {
+    const config = {
+      imports: {
+        services: { interpolation: {} }
+      },
+    };
+
+    const result = Joi.validate(config, schema);
+
+    t.equals(result.error.details.length, 1);
+    t.equals(result.error.details[0].message, '"value" must contain at least one of [whosonfirst, services.pip]');
+    t.end();
+
+  });
+
+  test.test('missing imports.services.pip.url should throw error', (t) =>  {
+    const config = {
+      imports: {
+        services: { pip: {} }
+      },
+    };
+
+    const result = Joi.validate(config, schema);
+
+    t.equals(result.error.details.length, 1);
+    t.equals(result.error.details[0].message, '"url" is required');
+    t.end();
+
+  });
+
+  test.test('non-string imports.services.pip.url should throw error', (t) =>  {
+    [null, 17, {}, [], true].forEach((value) => {
+      const config = {
+        imports: {
+          services: {
+            pip: { url: value }
+          }
+        },
+      };
+
+      const result = Joi.validate(config, schema);
+
+      t.equals(result.error.details.length, 1);
+      t.equals(result.error.details[0].message, '"url" must be a string');
+    });
+
     t.end();
 
   });
