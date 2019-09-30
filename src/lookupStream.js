@@ -37,7 +37,7 @@ function createPipResolverStream(pipResolver, config) {
       }
 
       if (dropUnmapped && _.isEmpty(result)) {
-        logger.info('zero admins', {
+        logger.debug('zero admins', {
           centroid: doc.getCentroid(),
           doc: doc
         });
