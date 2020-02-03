@@ -76,7 +76,7 @@ function createPipResolverStream(pipResolver, config) {
             }
           }
           catch (err) {
-            logger.warn('invalid value', {
+            logger.info('invalid value', {
               centroid: doc.getCentroid(),
               result: {
                 type: placetype,

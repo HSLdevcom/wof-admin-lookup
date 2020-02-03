@@ -71,7 +71,7 @@ function usePostalCity( result, doc ){
     });
   }
   catch (err) {
-    logger.warn('invalid value', {
+    logger.info('invalid value', {
       centroid: doc.getCentroid(),
       result: {
         type: 'locality',
