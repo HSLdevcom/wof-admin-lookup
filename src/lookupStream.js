@@ -66,13 +66,19 @@ function createPipResolverStream(pipResolver, config) {
 
           try {
             var name = values[0].name;
+            var existing = doc.parent[placetype];
+
             // addParent can throw an error if, for example, name is an empty string
             if (Array.isArray(name)) { // can now be an array
-              for(var i=0; i<name.length; i++) {
-                doc.addParent(placetype, name[i], values[0].id.toString(), values[0].abbr);
+              if(!Array.isArray(existing) || existing.length < name.length) { // replace with richer data
+                for(var i=0; i<name.length; i++) {
+                  doc.addParent(placetype, name[i], values[0].id.toString(), values[0].abbr);
+                }
               }
             } else {
-              doc.addParent(placetype, name, values[0].id.toString(), values[0].abbr);
+              if (!Array.isArray(existing) || !existing.length) {
+                doc.addParent(placetype, name, values[0].id.toString(), values[0].abbr);
+              }
             }
           }
           catch (err) {
@@ -90,7 +96,8 @@ function createPipResolverStream(pipResolver, config) {
 
       if ( result.postalcode ) { // want zip as adddress part
         var postalcode = result.postalcode[0].name;
-        if (postalcode && postalcode !== '') {
+        // do not overwrite existing zip
+        if (postalcode && postalcode !== '' && !(doc.address_parts && doc.address_parts.zip)) {
           doc.setAddress('zip', postalcode);
         }
       }
