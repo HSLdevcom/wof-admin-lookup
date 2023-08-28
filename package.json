@@ -24,7 +24,6 @@
     "who's on first"
   ],
   "dependencies": {
-    "@hapi/joi": "^16.1.8",
     "async": "^3.0.1",
     "csv-parse": "^4.0.0",
     "lodash": "^4.17.4",
@@ -33,7 +32,7 @@
     "pelias-logger": "^1.2.1",
     "pelias-microservice-wrapper": "^1.2.1",
     "polygon-lookup": "^2.4.0",
-    "pelias-whosonfirst": "^3.0.0",
+    "pelias-whosonfirst": "^5.7.1",
     "request": "^2.83.0",
     "stable": "^0.1.8",
     "through2": "^3.0.0",
