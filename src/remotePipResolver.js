@@ -2,7 +2,6 @@
 
 const logger = require('pelias-logger').get('wof-admin-lookup');
 const _ = require('lodash');
-const request = require('request');
 
 const service = require('pelias-microservice-wrapper').service;
 const PointInPolygon = require('./service/PointInPolygon');

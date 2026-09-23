@@ -2,7 +2,7 @@
 const fs = require('fs');
 const path = require('path');
 const stable = require('stable');
-const csv = require('csv-parse/lib/sync');
+const csv = require('csv-parse/sync').parse;
 const tsvOptions = {
   trim: true,
   skip_empty_lines: true,
